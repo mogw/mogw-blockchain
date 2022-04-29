@@ -1,9 +1,12 @@
 package blockchain
 
-type BlockChain struct {
-	Blocks []*Block
-}
+import (
+	"bytes"
+	"encoding/gob"
+	"log"
+)
 
+// Block is a single unit in the blockchain
 type Block struct {
 	Hash     []byte
 	Data     []byte
@@ -11,9 +14,19 @@ type Block struct {
 	Nonce    int
 }
 
+// Commenting out this code as our new proof of work algorithm takes care of the hashing functionality of the blocks
+
+// DeriveHash will hash the data of the current block, along with the hash from the block preceding it
+//func (b *Block) DeriveHash() {
+//info := bytes.Join([][]byte{b.Data, b.PrevHash}, []byte{})
+//hash := sha256.Sum256(info)
+//b.Hash = hash[:]
+//}
+///////////////////////////////////////
+
+// CreateBlock creates a block and performs a proof of work algorithm
 func CreateBlock(data string, prevHash []byte) *Block {
 	block := &Block{[]byte{}, []byte(data), prevHash, 0}
-	// Don't forget to add the 0 at the end for the nonce!
 	pow := NewProofOfWork(block)
 	nonce, hash := pow.Run()
 
@@ -23,16 +36,36 @@ func CreateBlock(data string, prevHash []byte) *Block {
 	return block
 }
 
-func (chain *BlockChain) AddBlock(data string) {
-	prevBlock := chain.Blocks[len(chain.Blocks)-1]
-	newBlock := CreateBlock(data, prevBlock.Hash)
-	chain.Blocks = append(chain.Blocks, newBlock)
-}
-
+// Genesis needs to be the first block in a chain, as the first block doesn't have an address to point back to
 func Genesis() *Block {
 	return CreateBlock("Genesis", []byte{})
 }
 
-func InitBlockChain() *BlockChain {
-	return &BlockChain{[]*Block{Genesis()}}
+func (b *Block) Serialize() []byte {
+	var res bytes.Buffer
+	encoder := gob.NewEncoder(&res)
+
+	err := encoder.Encode(b)
+
+	Handle(err)
+
+	return res.Bytes()
+}
+
+func Handle(err error) {
+	if err != nil {
+		log.Panic(err)
+	}
+}
+
+func Deserialize(data []byte) *Block {
+	var block Block
+
+	decoder := gob.NewDecoder(bytes.NewReader(data))
+
+	err := decoder.Decode(&block)
+
+	Handle(err)
+
+	return &block
 }
